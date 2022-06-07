@@ -25,7 +25,6 @@ namespace UpLoadZip.Web.Services
                         if (postedFile.FileName.Contains(".zip"))
                         {
                             string pathTemp = Path.GetTempPath();
-                            postedFile.SaveAs(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, postedFile.FileName));
                             var path = Path.Combine(pathTemp, postedFile.FileName);
                             postedFile.SaveAs(path);
                             result.Add(GetStruct(path));
@@ -50,21 +49,20 @@ namespace UpLoadZip.Web.Services
                 model.Acrchive = new Dictionary<string, int>();
                 using (ZipArchive zip = new ZipArchive(fileStream))
                 {
-                    var foldersCount = zip.Entries.Where(x => x.FullName.Split('/').Length > 1 || x.FullName.EndsWith("/"))
+                    var foldersRoot = zip.Entries.Where(x => x.FullName.Split('/').Length > 1 || x.FullName.EndsWith("/"))
                                                   .Select(f => f.FullName.Split('/')[0]).Distinct();
 
 
-                    foreach (var folder in foldersCount.OrderBy(x => x))
+                    foreach (var folder in foldersRoot.OrderBy(x => x))
                     {
-                        var listFiles = zip.Entries.Where(e => e.FullName.Contains(folder)).ToList();
-                        var cnt = listFiles.Select(a => a.FullName.Substring(0, a.FullName.LastIndexOf('/'))).Distinct().ToList().Count();
+                        var listFiles = zip.Entries.Where(e => e.FullName.StartsWith(folder)).Select(e => e.FullName.Substring(folder.Length + 1)).ToList();
+                        var cnt = listFiles.Select(a => a.Substring(0, a.IndexOf('/'))).Distinct().ToList().Count();
 
                         if (cnt > 0)    /*Каждая папка должна иметь хотя бы одну подпапку*/
                             model.Acrchive.Add(folder, cnt);
                         else
                             throw new Exception("Не корректная структура архива");
-                    }
-
+                    }              
                 }
                 return model;
             }
